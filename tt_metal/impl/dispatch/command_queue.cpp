@@ -17,7 +17,10 @@
 #include <utility>
 #include <variant>
 
+<<<<<<< HEAD
 #include "buffers/buffer.hpp"
+=======
+>>>>>>> 322c9a1e61 (Saving work)
 #include "common/math.hpp"
 #include "dev_msgs.h"
 #include "llrt/hal.hpp"
@@ -1584,6 +1587,7 @@ void HWCommandQueue::copy_into_user_space(
 
         remaining_bytes_to_read -= bytes_xfered;
 
+        // interleaved case + height sharded case
         if (buffer_page_mapping == nullptr) {
             void* contiguous_dst = (void*)(uint64_t(dst) + contig_dst_offset);
             if (page_size == padded_page_size) {
