@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "buffers/buffer.hpp"
 #include "common/env_lib.hpp"
 #include "tt_metal/impl/dispatch/command_queue_interface.hpp"
 #include "tt_metal/impl/dispatch/device_command.hpp"
