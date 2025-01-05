@@ -6,6 +6,7 @@
 
 #include <utility>
 #include "tt_metal/device.hpp"
+#include "tt_metal/impl/buffers/buffer.hpp"
 
 namespace tt::tt_metal {
 

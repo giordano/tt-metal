@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <sys/types.h>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -21,8 +22,10 @@
 #include "tt_metal/impl/dispatch/command_queue_interface.hpp"
 #include "tt_metal/impl/sub_device/sub_device_manager_tracker.hpp"
 #include "tt_metal/impl/sub_device/sub_device_types.hpp"
+#include "tt_metal/impl/trace/trace_buffer.hpp"
 #include "tt_metal/tt_stl/span.hpp"
 #include "program_cache.hpp"
+#include "tt_metal/impl/lightmetal/lightmetal_capture.hpp"
 
 namespace tt::tt_metal {
 
@@ -178,6 +181,11 @@ public:
     std::shared_ptr<TraceBuffer> get_trace(uint32_t tid) override;
     uint32_t get_trace_buffers_size() const override { return trace_buffers_size_; }
     void set_trace_buffers_size(uint32_t size) override { trace_buffers_size_ = size; }
+
+    // Light Metal
+    void light_metal_begin_capture() override;
+    std::vector<uint8_t> light_metal_end_capture() override;
+    void load_trace(const uint8_t cq_id, const uint32_t tid, detail::TraceDescriptor &trace_desc) override;
 
     bool using_slow_dispatch() const override;
     bool using_fast_dispatch() const override;
