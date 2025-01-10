@@ -8,7 +8,6 @@
 #include "compute_kernel_api/pack_untilize.h"
 #include "compute_kernel_api/reduce.h"
 #include "compute_kernel_api/tilize.h"
-#include "debug/dprint_tensix.h"
 // #include "tools/profiler/kernel_profiler.hpp"
 
 #define DEBUG_PRINT 0
@@ -176,8 +175,8 @@ void MAIN {
     uint32_t interm_reduction_chunks = window_size_hw / max_rows_for_reduction;
     cb_wait_front(in_scalar_cb_id, 1);
     for (uint32_t i = 0; i < nsticks_per_core_by_nblocks; ++i) {
-        for (uint32_t b_i = 0; b_i < in_nblocks_c; b_i++) {
-            // perform the intermediate reductions over the max tiles per reduction
+        for (uint32_t b_i = 0; b_i < in_nblocks_c - 1; b_i++) {
+            // perform the intermediate reductions over the first N - 1 whole chunks
             pack_untilize_uninit(interm_cb_id);
             pack_untilize_dst_init_short<max_tiles_per_iter>(interm_cb_id, num_out_rows, num_faces_in_output_tile);
             cb_reserve_back(interm_cb_id, 1);
@@ -191,20 +190,38 @@ void MAIN {
             }
             cb_push_back(interm_cb_id, 1);
 
-            // perform the final reduction over the max the max tiles per reduction for all but (possibly) the final
-            // iteration
-            if (b_i == in_nblocks_c - 1 && partial_iter_output_tiles > 0) {
-                pack_untilize_uninit(out_cb_id);
-                pack_untilize_dst_init_short<partial_iter_output_tiles>(
-                    out_cb_id, num_out_rows, num_faces_in_output_tile);
-                reduce_h_fused<partial_iter_output_tiles, is_partial_tile, max_rows_for_reduction>(
-                    interm_cb_id, in_scalar_cb_id, out_cb_id);
-            } else {
-                pack_untilize_uninit(out_cb_id);
-                pack_untilize_dst_init_short<max_tiles_per_iter>(out_cb_id, num_out_rows, num_faces_in_output_tile);
-                reduce_h_fused<max_tiles_per_iter, is_partial_tile, max_rows_for_reduction>(
-                    interm_cb_id, in_scalar_cb_id, out_cb_id);
-            }
+            // perform the final reduction over the first N - 1 whole chunks
+            pack_untilize_uninit(out_cb_id);
+            pack_untilize_dst_init_short<max_tiles_per_iter>(out_cb_id, num_out_rows, num_faces_in_output_tile);
+            reduce_h_fused<max_tiles_per_iter, is_partial_tile, max_rows_for_reduction>(
+                interm_cb_id, in_scalar_cb_id, out_cb_id);
+        }
+
+        // perform the intermediate reduction over chunk N (across the whole chunk even if the last chunk is partial)
+        pack_untilize_uninit(interm_cb_id);
+        pack_untilize_dst_init_short<max_tiles_per_iter>(interm_cb_id, num_out_rows, num_faces_in_output_tile);
+        cb_reserve_back(interm_cb_id, 1);
+        for (uint32_t h = 0; h <= interm_reduction_chunks; h++) {
+            reduce_h_fused_iterm<
+                max_tiles_per_iter,
+                is_partial_tile,
+                max_rows_for_reduction,
+                split_reader,
+                max_rows_for_reduction>(in_cb_id, in_scalar_cb_id, i, h, interm_cb_id);
+        }
+        cb_push_back(interm_cb_id, 1);
+
+        // perform the reduction over the either whole or partial chunk N
+        if (partial_iter_output_tiles > 0) {
+            pack_untilize_uninit(out_cb_id);
+            pack_untilize_dst_init_short<partial_iter_output_tiles>(out_cb_id, num_out_rows, num_faces_in_output_tile);
+            reduce_h_fused<partial_iter_output_tiles, is_partial_tile, max_rows_for_reduction>(
+                interm_cb_id, in_scalar_cb_id, out_cb_id);
+        } else {
+            pack_untilize_uninit(out_cb_id);
+            pack_untilize_dst_init_short<max_tiles_per_iter>(out_cb_id, num_out_rows, num_faces_in_output_tile);
+            reduce_h_fused<max_tiles_per_iter, is_partial_tile, max_rows_for_reduction>(
+                interm_cb_id, in_scalar_cb_id, out_cb_id);
         }
     }
     cb_pop_front(in_scalar_cb_id, 1);
