@@ -260,6 +260,12 @@ Size TensorLayout::get_physical_shard_shape() const {
     }
 }
 
+Size TensorLayout::compute_logical_2d_shape(const ttnn::SimpleShape& shape) const {
+    size_t width = shape[-1];
+    size_t height = shape.volume() / width;
+    return Size{height, width};
+}
+
 Size TensorLayout::compute_physical_shape(const ttnn::SimpleShape& shape) const {
     const int rank = static_cast<int>(shape.rank());
     const int alignment_rank = static_cast<int>(alignment_.size());

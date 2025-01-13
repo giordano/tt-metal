@@ -74,10 +74,17 @@ Tensor create_owned_tensor(T* data_ptr, const ttnn::TensorSpec& tensor_spec) {
     std::size_t num_elements = tensor_spec.logical_shape().volume();
     auto logical_data = std::vector<T>(data_ptr, data_ptr + num_elements);
 
-    // See implementation for documentation
-    auto physical_data = tensor_impl::encode_tensor_data(logical_data, tensor_spec);
+    const bool requires_padding = tensor_spec.logical_2d_shape() != tensor_spec.physical_shape();
+    const bool requires_tilization = tensor_spec.layout() != Layout::ROW_MAJOR;
+    if (requires_padding or requires_tilization) {
+        // See implementation for documentation
+        auto physical_data = tensor_impl::encode_tensor_data(logical_data, tensor_spec);
 
-    auto buffer = owned_buffer::create(std::move(physical_data));
+        auto buffer = owned_buffer::create(std::move(physical_data));
+        auto storage = OwnedStorage{std::move(buffer)};
+        return Tensor(std::move(storage), tensor_spec);
+    }
+    auto buffer = owned_buffer::create(std::move(logical_data));
     auto storage = OwnedStorage{std::move(buffer)};
     return Tensor(std::move(storage), tensor_spec);
 }
@@ -150,8 +157,7 @@ Tensor create_tt_tensor_from_py_data(
     const std::function<void()>& on_destruction_callback) {
     auto layout = tensor_spec.layout();
 
-    const bool requires_padding = tensor_spec.logical_shape().volume() !=
-                                  tensor_spec.physical_shape().height() * tensor_spec.physical_shape().width();
+    const bool requires_padding = tensor_spec.logical_2d_shape() != tensor_spec.physical_shape();
     const bool requires_tilization = layout != Layout::ROW_MAJOR;
     const bool enable_borrow = !requires_padding and !requires_tilization and !force_disable_borrow;
 
@@ -490,10 +496,15 @@ owned_buffer::Buffer<T> create_row_major_owned_buffer(
 
     auto physical_data = owned_buffer.get();
 
-    // See implementation for documentation
-    auto logical_data = tensor_impl::decode_tensor_data(physical_data, tensor_spec);
+    const bool requires_unpadding = tensor_spec.logical_2d_shape() != tensor_spec.physical_shape();
+    const bool requires_untilization = tensor_spec.layout() != Layout::ROW_MAJOR;
+    if (requires_unpadding or requires_untilization) {
+        // See implementation for documentation
+        auto logical_data = tensor_impl::decode_tensor_data(physical_data, tensor_spec);
 
-    return owned_buffer::create(std::move(logical_data));
+        return owned_buffer::create(std::move(logical_data));
+    }
+    return owned_buffer::create(std::move(physical_data));
 }
 
 std::variant<OwnedBuffer, BorrowedBuffer> get_host_buffer_from_tensor(

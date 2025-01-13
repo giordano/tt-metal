@@ -117,8 +117,8 @@ TEST_P(ShardWithAlignmentTests, LogicalToPhysical) {
             physical_shape, tensor_spec.tile(), owned_buffer::create(std::move(physical_data)));
     }
 
-    // auto shape_2D = tt::tt_metal::get_2d_shape(tensor_spec.logical_shape());
-    // pretty_print_data_as_shards(logical_data, shape_2D, logical_shard_shape);
+    // auto shape_2d = tensor_spec.logical_2d_shape();
+    // pretty_print_data_as_shards(logical_data, shape_2d, logical_shard_shape);
     // pretty_print_data_as_shards(physical_data, physical_shape, physical_shard_shape);
 
     ASSERT_EQ(physical_data.size(), expected_physical_data.size());
@@ -166,9 +166,9 @@ TEST_P(ShardWithAlignmentTests, PhysicalToLogical) {
     }
     auto logical_data = tensor_impl::decode_tensor_data(physical_data, tensor_spec);
 
-    // auto shape_2D = tt::tt_metal::get_2d_shape(tensor_spec.logical_shape());
+    // auto shape_2d = tensor_spec.logical_2d_shape();
     // pretty_print_data_as_shards(physical_data, physical_shape, physical_shard_shape);
-    // pretty_print_data_as_shards(logical_data, shape_2D, logical_shard_shape);
+    // pretty_print_data_as_shards(logical_data, shape_2d, logical_shard_shape);
 
     ASSERT_EQ(logical_data.size(), expected_data.size());
     for (size_t i = 0; i < logical_data.size(); i++) {
