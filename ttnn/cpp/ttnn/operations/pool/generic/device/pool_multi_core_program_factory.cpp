@@ -156,20 +156,11 @@ Pool2D::MultiCore::cached_program_t pool2d_multi_core_sharded_with_halo_v2_impl_
 
     uint32_t in_cb_sz = 0;
     uint32_t in_nblocks_c = 1;
-    if (is_large_kernel) {
-        if (is_wide_reduction) {
-            in_cb_sz = MAX_TILES_PER_REDUCTION * tt::constants::TILE_WIDTH * max_rows_for_reduction;
-            in_nblocks_c = std::ceil((float)in_ntiles_c / MAX_TILES_PER_REDUCTION);
-        } else {
-            in_cb_sz = input_shape[3] / num_shards_c * max_rows_for_reduction;
-        }
+    if (is_wide_reduction) {
+        in_cb_sz = MAX_TILES_PER_REDUCTION * tt::constants::TILE_HW;
+        in_nblocks_c = std::ceil((float)in_ntiles_c / MAX_TILES_PER_REDUCTION);
     } else {
-        if (is_wide_reduction) {
-            in_cb_sz = MAX_TILES_PER_REDUCTION * tt::constants::TILE_WIDTH * kernel_size_hw;
-            in_nblocks_c = std::ceil((float)in_ntiles_c / MAX_TILES_PER_REDUCTION);
-        } else {
-            in_cb_sz = input_shape[3] / num_shards_c * kernel_size_hw;
-        }
+        in_cb_sz = in_ntiles_c * tt::constants::TILE_HW;
     }
     // reader output == input to tilize
     uint32_t in_cb_id_0 = tt::CBIndex::c_0;  // input rows for "multiple (out_nelems)" output pixels
