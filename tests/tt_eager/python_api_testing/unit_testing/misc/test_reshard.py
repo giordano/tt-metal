@@ -514,6 +514,39 @@ def test_reshard_with_program_cache(
             ttnn.TensorMemoryLayout.WIDTH_SHARDED,
             ttnn.BufferType.L1,
         ),
+        (
+            [1, 1, 2, 1056 * 160],
+            ttnn.ROW_MAJOR_LAYOUT,
+            ttnn.CoreRangeSet({ttnn.CoreRange(ttnn.CoreCoord(0, 0), ttnn.CoreCoord(7, 7))}),
+            (2, 2640),
+            ttnn.ShardOrientation.ROW_MAJOR,
+            ttnn.TensorMemoryLayout.WIDTH_SHARDED,
+            ttnn.BufferType.L1,
+            ttnn.CoreRangeSet({ttnn.CoreRange(ttnn.CoreCoord(0, 0), ttnn.CoreCoord(7, 0))}),
+            (2, 21120),
+            ttnn.ShardOrientation.ROW_MAJOR,
+            ttnn.TensorMemoryLayout.WIDTH_SHARDED,
+            ttnn.BufferType.DRAM,
+        ),
+        (
+            [1, 1, 2, 1056 * 160],
+            ttnn.ROW_MAJOR_LAYOUT,
+            ttnn.CoreRangeSet(
+                {
+                    ttnn.CoreRange(ttnn.CoreCoord(0, 0), ttnn.CoreCoord(7, 6)),
+                    ttnn.CoreRange(ttnn.CoreCoord(0, 7), ttnn.CoreCoord(3, 7)),
+                }
+            ),
+            (2, 2816),
+            ttnn.ShardOrientation.ROW_MAJOR,
+            ttnn.TensorMemoryLayout.WIDTH_SHARDED,
+            ttnn.BufferType.L1,
+            ttnn.CoreRangeSet({ttnn.CoreRange(ttnn.CoreCoord(0, 0), ttnn.CoreCoord(7, 0))}),
+            (2, 21120),
+            ttnn.ShardOrientation.ROW_MAJOR,
+            ttnn.TensorMemoryLayout.WIDTH_SHARDED,
+            ttnn.BufferType.DRAM,
+        ),
     ],
 )
 def test_dram_reshard(
@@ -537,14 +570,13 @@ def test_dram_reshard(
     output_mem_config = ttnn.MemoryConfig(output_sharding_scheme, output_buffer_type, output_shard_spec)
 
     input = torch.randn(input_shape).bfloat16()
-
     input_tensor = ttnn.Tensor(input, ttnn.bfloat16).to(input_layout).to(device, input_mem_config)
 
     output_tensor = ttnn.reshard(input_tensor, output_mem_config)
 
     output = ttnn.to_torch(output_tensor)
-
-    passing, output_log = comp_equal(input, output)
+    passing, output_log = comp_pcc(input, output, 1.0)
+    assert passing, output_log
 
 
 @skip_for_blackhole("GH Issue #15234")
