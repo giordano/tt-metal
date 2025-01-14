@@ -23,7 +23,7 @@
 #include "ttnn/cpp/ttnn/operations/ccl/common/host/ccl_worker_builder.hpp"
 #include "ttnn/cpp/ttnn/operations/ccl/common/host/ccl_command_stream_builders.hpp"
 
-#include "ttnn/cpp/ttnn/operations/experimental/reshape/reshape.hpp"
+#include "ttnn/cpp/ttnn/operations/experimental/reshape/view.hpp"
 
 #include "tt_metal/distributed/mesh_device.hpp"
 #include "tt_metal/distributed/mesh_device_view.hpp"

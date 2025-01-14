@@ -14,7 +14,7 @@
 #include "ttnn/cpp/ttnn/operations/data_movement/pad/pad.hpp"
 #include "tt_metal/common/constants.hpp"
 
-#include "ttnn/cpp/ttnn/operations/experimental/reshape/reshape.hpp"
+#include "ttnn/cpp/ttnn/operations/experimental/reshape/view.hpp"
 
 #include "fold.hpp"
 
