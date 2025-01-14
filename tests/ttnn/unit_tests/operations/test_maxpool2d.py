@@ -71,10 +71,18 @@ def run_max_pool(
             pytest.skip("This case runs out of memory on Grayskull")
         if kernel_h > 3 and kernel_w > 3 and act_shape == [16, 64, 112, 112] and is_grayskull():
             pytest.skip("This case runs out of memory on Grayskull")
+        if (
+            stride == (2, 2)
+            and kernel_size == (13, 13)
+            and act_shape == [1, 800, 32, 32]
+            and not is_x2_harvested(device)
+            and not is_grayskull()
+        ):
+            pytest.skip("This case runs out of memory on Wormhole b0")
         if kernel_size == (13, 13) and (act_shape == [128, 32, 132, 20] or in_c > 512) and is_grayskull():
             pytest.skip("This case runs out of memory on Grayskull")
         if kernel_size == (13, 13) and in_c > 768 and is_x2_harvested(device):
-            pytest.skip("This case runs out of memory on Grayskull")
+            pytest.skip("This case runs out of memory on Wormhole X2")
         if kernel_h > 5 and kernel_w > 5 and act_shape == [16, 64, 112, 112] and is_x2_harvested(device):
             pytest.skip("This case runs out of memory on Wormhole X2")
         if stride == (1, 1) and act_shape == [128, 32, 132, 20] and is_x2_harvested(device):
@@ -120,6 +128,9 @@ def run_max_pool(
 
     torch.manual_seed(0)
     torch.set_printoptions(precision=3, sci_mode=False, linewidth=500, threshold=10000, edgeitems=32)
+
+    print("is_X2_harvested", is_x2_harvested(device))
+    print("is_grayskull", is_grayskull())
 
     ## construct the tensor in NCHW shape
     act = torch.randn(act_shape, dtype=torch.bfloat16)
