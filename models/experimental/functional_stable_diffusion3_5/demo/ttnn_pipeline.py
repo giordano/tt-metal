@@ -675,6 +675,29 @@ class ttnnStableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSi
             )
 
         print("Entering loop")
+
+        ttnn_latents = ttnn.from_torch(
+            latents,
+            layout=ttnn.TILE_LAYOUT,
+            dtype=ttnn.bfloat16,
+            device=device_ttnn,
+            memory_config=ttnn.L1_MEMORY_CONFIG,
+        )
+        prompt_embeds_pad = F.pad(prompt_embeds, (0, 0, 0, 6))
+        ttnn_prompt_embeds = ttnn.from_torch(
+            prompt_embeds_pad.unsqueeze(1),
+            layout=ttnn.TILE_LAYOUT,
+            dtype=ttnn.bfloat16,
+            device=device_ttnn,
+            memory_config=ttnn.L1_MEMORY_CONFIG,
+        )
+        ttnn_pooled_prompt_embeds = ttnn.from_torch(
+            pooled_prompt_embeds.unsqueeze(1).unsqueeze(1),
+            layout=ttnn.TILE_LAYOUT,
+            dtype=ttnn.bfloat16,
+            device=device_ttnn,
+            memory_config=ttnn.L1_MEMORY_CONFIG,
+        )
         # 6. Denoising loop
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
@@ -682,56 +705,40 @@ class ttnnStableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSi
                     continue
 
                 # expand the latents if we are doing classifier free guidance
-                latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
+                ttnn_latent_model_input = (
+                    ttnn.concat([ttnn_latents, ttnn_latents]) if self.do_classifier_free_guidance else ttnn_latents
+                )
+                print("ttnn_latent_model_input", ttnn_latent_model_input.shape)
                 # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
-                timestep = t.expand(latent_model_input.shape[0])
-                ttnn_latent_model_input = ttnn.from_torch(
-                    latent_model_input,
-                    layout=ttnn.TILE_LAYOUT,
-                    dtype=ttnn.bfloat16,
-                    device=device_ttnn,
-                    memory_config=ttnn.L1_MEMORY_CONFIG,
-                )
+                timestep = t.expand(ttnn.to_torch(ttnn_latent_model_input).shape[0])
+
                 ttnn_timestep_proj = parameters_transformer["timesteps_proj"][i]
-                prompt_embeds_pad = F.pad(prompt_embeds, (0, 0, 0, 6))
-                ttnn_prompt_embeds = ttnn.from_torch(
-                    prompt_embeds_pad.unsqueeze(1),
-                    layout=ttnn.TILE_LAYOUT,
-                    dtype=ttnn.bfloat16,
-                    device=device_ttnn,
-                    memory_config=ttnn.L1_MEMORY_CONFIG,
-                )
-                ttnn_pooled_prompt_embeds = ttnn.from_torch(
-                    pooled_prompt_embeds.unsqueeze(1).unsqueeze(1),
-                    layout=ttnn.TILE_LAYOUT,
-                    dtype=ttnn.bfloat16,
-                    device=device_ttnn,
-                    memory_config=ttnn.L1_MEMORY_CONFIG,
-                )
+
                 print("Entering transformer")
-                noise_pred = ttnn.to_torch(
-                    self.transformer(
-                        hidden_states=ttnn_latent_model_input,
-                        timestep=ttnn_timestep_proj,
-                        encoder_hidden_states=ttnn_prompt_embeds,
-                        pooled_projections=ttnn_pooled_prompt_embeds,
-                        joint_attention_kwargs=self.joint_attention_kwargs,
-                        return_dict=False,
-                        parameters=parameters_transformer,
-                    )[0]
-                )
+                noise_pred = self.transformer(
+                    hidden_states=ttnn_latent_model_input,
+                    timestep=ttnn_timestep_proj,
+                    encoder_hidden_states=ttnn.clone(ttnn_prompt_embeds),
+                    pooled_projections=ttnn.clone(ttnn_pooled_prompt_embeds),
+                    joint_attention_kwargs=self.joint_attention_kwargs,
+                    return_dict=False,
+                    parameters=parameters_transformer,
+                )[0]
+                # )
+                # ttnn_pooled_prompt_embeds=ttnn.reallocate(ttnn_pooled_prompt_embeds)
                 # from tests.ttnn.utils_for_testing import comp_pcc
                 # latents=torch.load("models/experimental/functional_stable_diffusion3_5/demo/post_transformer/un_opt_latents_input_0.pt")
                 # noise_pred=torch.load("models/experimental/functional_stable_diffusion3_5/demo/post_transformer/un_opt_noise_pred_0.pt")
                 print("Eneded transformer")
                 # perform guidance
                 if self.do_classifier_free_guidance:
-                    noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+                    noise_pred_uncond, noise_pred_text = ttnn.split(noise_pred, 2)
                     # print("noise_pred_uncond",comp_pcc(noise_pred_uncond,torch.load("models/experimental/functional_stable_diffusion3_5/demo/post_transformer/un_opt_noise_pred_uncond_0.pt"),pcc=1.0)) pcc=1.0
                     noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_text - noise_pred_uncond)
 
                 # compute the previous noisy sample x_t -> x_t-1
                 latents_dtype = latents.dtype
+                noise_pred = ttnn.to_torch(noise_pred)
                 latents = self.scheduler.step(noise_pred, t, latents, return_dict=False)[0]
                 # print("latents",comp_pcc(latents,torch.load("models/experimental/functional_stable_diffusion3_5/demo/post_transformer/un_opt_latents_output_0.pt"),pcc=1.0)) pcc=1.0
 
@@ -740,23 +747,29 @@ class ttnnStableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSi
                         # some platforms (eg. apple mps) misbehave due to a pytorch bug: https://github.com/pytorch/pytorch/pull/99272
                         latents = latents.to(latents_dtype)
 
-                if callback_on_step_end is not None:
-                    callback_kwargs = {}
-                    for k in callback_on_step_end_tensor_inputs:
-                        callback_kwargs[k] = locals()[k]
-                    callback_outputs = callback_on_step_end(self, i, t, callback_kwargs)
+                # if callback_on_step_end is not None:
+                #     callback_kwargs = {}
+                #     for k in callback_on_step_end_tensor_inputs:
+                #         callback_kwargs[k] = locals()[k]
+                #     callback_outputs = callback_on_step_end(self, i, t, callback_kwargs)
 
-                    latents = callback_outputs.pop("latents", latents)
-                    prompt_embeds = callback_outputs.pop("prompt_embeds", prompt_embeds)
-                    negative_prompt_embeds = callback_outputs.pop("negative_prompt_embeds", negative_prompt_embeds)
-                    negative_pooled_prompt_embeds = callback_outputs.pop(
-                        "negative_pooled_prompt_embeds", negative_pooled_prompt_embeds
-                    )
+                #     latents = callback_outputs.pop("latents", latents)
+                #     prompt_embeds = callback_outputs.pop("prompt_embeds", prompt_embeds)
+                #     negative_prompt_embeds = callback_outputs.pop("negative_prompt_embeds", negative_prompt_embeds)
+                #     negative_pooled_prompt_embeds = callback_outputs.pop(
+                #         "negative_pooled_prompt_embeds", negative_pooled_prompt_embeds
+                #     )
 
                 # call the callback, if provided
                 if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
                     progress_bar.update()
-
+                ttnn_latents = ttnn.from_torch(
+                    latents,
+                    layout=ttnn.TILE_LAYOUT,
+                    dtype=ttnn.bfloat16,
+                    device=device_ttnn,
+                    memory_config=ttnn.L1_MEMORY_CONFIG,
+                )
                 # if XLA_AVAILABLE:
                 #     xm.mark_step()
 
