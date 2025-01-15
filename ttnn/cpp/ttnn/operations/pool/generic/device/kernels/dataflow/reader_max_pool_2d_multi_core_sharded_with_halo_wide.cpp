@@ -89,13 +89,10 @@ void kernel_main() {
 
     uint32_t npages_to_reserve = 1;
     uint32_t counter = reader_id;
+    uint32_t read_bytes = MAX_ELE_PER_REDUCTION;
     while (counter < reader_nindices) {
         uint16_t top_left_local_index = reader_indices_ptr[counter++];
         for (uint32_t c_i = 0; c_i < in_nblocks_c; ++c_i) {
-            uint32_t read_bytes = MAX_ELE_PER_REDUCTION;
-            if (c_i == in_nblocks_c - 1) {
-                read_bytes = in_nbytes_c - c_i * MAX_ELE_PER_REDUCTION;
-            }
             cb_reserve_back(in_cb_id, npages_to_reserve);
             uint32_t out_l1_write_addr_base = get_write_ptr(in_cb_id);
             uint32_t out_l1_write_addr = out_l1_write_addr_base;
