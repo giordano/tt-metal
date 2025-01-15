@@ -1218,6 +1218,7 @@ Matmul create_matmul_struct(
     auto arch = input_tensor_a.device()->arch();
     const bool has_user_grid = parameters.user_core_coord.has_value();
     const bool has_program_config = parameters.program_config.has_value();
+<<<<<<< Updated upstream
     bool are_inputs_low_precision_df =
         ((input_tensor_a.get_dtype() == DataType::BFLOAT8_B || input_tensor_a.get_dtype() == DataType::BFLOAT4_B) &&
          (input_tensor_b.get_dtype() == DataType::BFLOAT8_B || input_tensor_b.get_dtype() == DataType::BFLOAT4_B));
@@ -1227,6 +1228,21 @@ Matmul create_matmul_struct(
         (input_tensor_a.get_dtype() == DataType::FLOAT32 && input_tensor_b.get_dtype() == DataType::FLOAT32);
     math_fidelity = are_inputs_32F ? MathFidelity::HiFi4 : math_fidelity;
 
+=======
+    const auto math_fidelity = MathFidelityy::LoFi;
+    if (!has_program_config && !has_user_grid) {
+        if ((arch != tt::ARCH::GRAYSKULL) && (input_tensor_a.get_dtype() == DataType::FLOAT32) &&
+            (input_tensor_b.get_dtype() == DataType::FLOAT32)) {
+            math_fidelity = MathFidelity::HiFi4;
+        } else if (!((input_tensor_a.get_dtype() == DataType::BFLOAT8_B ||
+                      input_tensor_a.get_dtype() == DataType::BFLOAT4_B) &&
+                     (input_tensor_b.get_dtype() == DataType::BFLOAT8_B ||
+                      input_tensor_b.get_dtype() == DataType::BFLOAT4_B))) {
+            math_fidelity = MathFidelity::HiFi2;
+        }
+    }
+
+>>>>>>> Stashed changes
     bool broadcast_batch =
         parameters.bcast_batch.value_or(get_broadcast_batch(input_tensor_a, input_tensor_b, parameters.program_config));
     TT_FATAL(!(has_user_grid && has_program_config), "Cannot use both user core grid/coordinates and a program config");
@@ -1263,6 +1279,7 @@ Matmul create_matmul_struct(
         }
     }
     bool is_float_32 = output_dtype==DataType::FLOAT32;
+
     auto kernel_config_val = init_device_compute_kernel_config(
         arch,
         parameters.compute_kernel_config,

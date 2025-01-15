@@ -13,7 +13,7 @@ from models.utility_functions import skip_for_wormhole_b0
 
 
 @pytest.mark.parametrize("h", [32])
-@pytest.mark.parametrize("w", [64])
+@pytest.mark.parametrize("w", [8192])
 def test_layer_norm(device, h, w):
     torch.manual_seed(0)
 
