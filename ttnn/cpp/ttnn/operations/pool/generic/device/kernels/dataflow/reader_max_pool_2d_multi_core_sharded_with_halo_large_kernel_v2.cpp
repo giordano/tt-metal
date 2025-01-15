@@ -96,16 +96,10 @@ void kernel_main() {
     uint32_t total_elems_to_reduce = window_h * window_w;
     uint32_t remaining_elems = total_elems_to_reduce % max_rows_for_reduction;
     bool wide_reduction = in_nblocks_c > 1;
+    uint32_t read_bytes =
+        wide_reduction ? MAX_ELE_PER_REDUCTION : in_nbytes_c;  // in_cb is MAX_ELE_PER_REDUCTION for wide reductions
     while (counter < reader_nindices) {
-        uint32_t read_bytes = in_nbytes_c;
-        if (wide_reduction) {
-            read_bytes = MAX_ELE_PER_REDUCTION;  // for now, pow of 2 channels are only supported.
-        }
         for (uint32_t c_i = 0; c_i < in_nblocks_c; c_i++) {
-            if (c_i == in_nblocks_c - 1 && wide_reduction) {
-                read_bytes = in_nbytes_c - c_i * MAX_ELE_PER_REDUCTION;
-            }
-
             uint16_t top_left_local_index = reader_indices_ptr[counter];
             uint32_t processed_rows = 0;
             cb_reserve_back(in_cb_id, 1);
@@ -117,9 +111,7 @@ void kernel_main() {
                     uint32_t read_offset =
                         in_l1_read_base_addr + (stick_offset * in_nbytes_c + c_i * MAX_ELE_PER_REDUCTION);
                     noc_async_read_one_packet(get_noc_addr(read_offset), out_l1_write_addr, read_bytes);
-                    out_l1_write_addr += wide_reduction
-                                             ? MAX_ELE_PER_REDUCTION
-                                             : read_bytes;  // in_cb is MAX_ELE_PER_REDUCTION for wide reductions
+                    out_l1_write_addr += read_bytes;
                     processed_rows++;
                     if ((processed_rows % max_rows_for_reduction) == 0) {
                         noc_async_read_barrier();
