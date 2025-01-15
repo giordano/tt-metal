@@ -7,7 +7,6 @@
 #include "compute_kernel_api/tilize.h"
 #include "compute_kernel_api/reduce.h"
 #include "compute_kernel_api/pack_untilize.h"
-#include "tt_metal/hw/inc/debug/dprint_tensix.h"
 
 #define DEBUG_PRINT 0
 

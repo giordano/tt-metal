@@ -4,11 +4,9 @@
 
 #include <cstdint>
 
-// #include "compute_kernel_api.h"
 #include "compute_kernel_api/pack_untilize.h"
 #include "compute_kernel_api/reduce.h"
 #include "compute_kernel_api/tilize.h"
-// #include "tools/profiler/kernel_profiler.hpp"
 
 #define DEBUG_PRINT 0
 
