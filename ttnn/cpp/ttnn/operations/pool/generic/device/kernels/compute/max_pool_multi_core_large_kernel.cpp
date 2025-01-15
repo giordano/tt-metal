@@ -120,7 +120,8 @@ void MAIN {
 
     constexpr uint32_t max_tiles_per_iter =
         in_ntiles_c < MAX_TILES_PER_REDUCTION ? in_ntiles_c : MAX_TILES_PER_REDUCTION;
-    constexpr uint32_t partial_iter_output_tiles = in_ntiles_c % MAX_TILES_PER_REDUCTION;
+    constexpr uint32_t partial_iter_output_tiles =
+        in_ntiles_c % MAX_TILES_PER_REDUCTION == 0 ? max_tiles_per_iter : in_ntiles_c % MAX_TILES_PER_REDUCTION;
     tilizeA_B_reduce_init<true>(
         in_cb_id, in_scalar_cb_id, max_tiles_per_iter, interm_cb_id, num_faces_in_input_tile, max_rows_for_reduction);
     pack_untilize_dst_init_short<max_tiles_per_iter>(out_cb_id, num_out_rows, num_faces_in_output_tile);
@@ -165,17 +166,10 @@ void MAIN {
         cb_push_back(interm_cb_id, 1);
 
         // perform the reduction over the either whole or partial chunk N
-        if (partial_iter_output_tiles > 0) {
-            pack_untilize_uninit(out_cb_id);
-            pack_untilize_dst_init_short<partial_iter_output_tiles>(out_cb_id, num_out_rows, num_faces_in_output_tile);
-            reduce_h_fused<partial_iter_output_tiles, is_partial_tile, max_rows_for_reduction>(
-                interm_cb_id, in_scalar_cb_id, out_cb_id);
-        } else {
-            pack_untilize_uninit(out_cb_id);
-            pack_untilize_dst_init_short<max_tiles_per_iter>(out_cb_id, num_out_rows, num_faces_in_output_tile);
-            reduce_h_fused<max_tiles_per_iter, is_partial_tile, max_rows_for_reduction>(
-                interm_cb_id, in_scalar_cb_id, out_cb_id);
-        }
+        pack_untilize_uninit(out_cb_id);
+        pack_untilize_dst_init_short<partial_iter_output_tiles>(out_cb_id, num_out_rows, num_faces_in_output_tile);
+        reduce_h_fused<partial_iter_output_tiles, is_partial_tile, max_rows_for_reduction>(
+            interm_cb_id, in_scalar_cb_id, out_cb_id);
     }
     cb_pop_front(in_scalar_cb_id, 1);
 }

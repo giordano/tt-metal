@@ -33,7 +33,7 @@ void validate_pool2d(
     const tt::tt_metal::LegacyShape input_shape = input.get_legacy_shape();
     TT_FATAL(
         (input_shape[3] % tt::constants::TILE_WIDTH == 0) || (input_shape[3] == 16),
-        "Input channels ({}) should be divisible by TILE_WIDTH ({}) or should be 16",
+        "Input channels ({}) should be padded to nearest TILE_WIDTH ({}) or should be 16",
         input_shape[3],
         tt::constants::TILE_WIDTH);
 
