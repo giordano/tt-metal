@@ -13,21 +13,14 @@
 #include "tt_metal/impl/buffers/global_circular_buffer.hpp"
 #include "tt_metal/include/tt_metal/global_circular_buffer.hpp"
 #include "ttnn/cpp/ttnn/global_circular_buffer.hpp"
+#include "ttnn/operations/global_cb_utils.hpp"
 
 namespace ttnn::operations::dram_prefetcher {
-
-using DeviceGlobalCircularBuffer = std::variant<
-    tt::tt_metal::v1::experimental::GlobalCircularBuffer,
-    ttnn::global_circular_buffer::MultiDeviceGlobalCircularBuffer>;
 
 operation::ProgramWithCallbacks dram_prefetcher_multi_core(
     const std::vector<Tensor>& input_tensors,
     const uint32_t num_layers,
     const tt::tt_metal::v1::experimental::GlobalCircularBuffer& global_cb);
-operation::ProgramWithCallbacks dram_prefetcher_multi_core_multi_device(
-    const std::vector<Tensor>& input_tensors,
-    const uint32_t num_layers,
-    const ttnn::global_circular_buffer::MultiDeviceGlobalCircularBuffer& multi_global_cb);
 
 struct DramPrefetcher {
     const std::optional<const DeviceGlobalCircularBuffer> global_cb;
