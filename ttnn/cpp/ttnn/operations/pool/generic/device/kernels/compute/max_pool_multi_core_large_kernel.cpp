@@ -13,6 +13,7 @@
 #if DEBUG_PRINT == 1
 #include "debug/dprint.h"
 #include "debug/dprint_pages.h"
+#include "debug/dprint_tensix.h"
 #endif
 
 template <
