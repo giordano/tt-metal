@@ -23,7 +23,7 @@ template <
     uint32_t max_rows_for_reduction,
     uint32_t split_reader,
     uint32_t unpA_face_r_dim>
-inline void reduce_h_fused_iterm(
+inline void reduce_h_fused_interm(
     const uint32_t in_cb_id,
     const uint32_t in_scalar_cb_id,
     const uint32_t in_stick_index,
@@ -134,7 +134,7 @@ void MAIN {
             pack_untilize_dst_init_short<max_tiles_per_iter>(interm_cb_id, num_out_rows, num_faces_in_output_tile);
             cb_reserve_back(interm_cb_id, 1);
             for (uint32_t h = 0; h <= interm_reduction_chunks; h++) {
-                reduce_h_fused_iterm<
+                reduce_h_fused_interm<
                     max_tiles_per_iter,
                     is_partial_tile,
                     max_rows_for_reduction,
@@ -155,7 +155,7 @@ void MAIN {
         pack_untilize_dst_init_short<max_tiles_per_iter>(interm_cb_id, num_out_rows, num_faces_in_output_tile);
         cb_reserve_back(interm_cb_id, 1);
         for (uint32_t h = 0; h <= interm_reduction_chunks; h++) {
-            reduce_h_fused_iterm<
+            reduce_h_fused_interm<
                 max_tiles_per_iter,
                 is_partial_tile,
                 max_rows_for_reduction,
