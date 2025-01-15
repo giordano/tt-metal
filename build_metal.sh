@@ -15,6 +15,7 @@ show_help() {
     echo "  -s, --enable-tsan                Enable ThreadSanitizer."
     echo "  -u, --enable-ubsan               Enable UndefinedBehaviorSanitizer."
     echo "  -p, --enable-profiler            Enable Tracy profiler."
+    echo "  --enable-light-metal-trace       Enable Light Metal tracing to binary."
     echo "  --install-prefix                 Where to install build artifacts."
     echo "  --build-tests                    Build All Testcases."
     echo "  --build-ttnn-tests               Build ttnn Testcases."
@@ -49,6 +50,7 @@ enable_tsan="OFF"
 enable_ubsan="OFF"
 build_type="Release"
 enable_profiler="OFF"
+enable_light_metal_trace="OFF"
 build_tests="OFF"
 build_ttnn_tests="OFF"
 build_metal_tests="OFF"
@@ -65,7 +67,7 @@ ttnn_shared_sub_libs="OFF"
 declare -a cmake_args
 
 OPTIONS=h,e,c,t,a,m,s,u,b:,p
-LONGOPTIONS=help,build-all,export-compile-commands,enable-ccache,enable-time-trace,enable-asan,enable-msan,enable-tsan,enable-ubsan,build-type:,enable-profiler,install-prefix:,build-tests,build-ttnn-tests,build-metal-tests,build-umd-tests,build-programming-examples,build-tt-train,build-static-libs,disable-unity-builds,release,development,debug,clean,cxx-compiler-path:,c-compiler-path:,ttnn-shared-sub-libs
+LONGOPTIONS=help,build-all,export-compile-commands,enable-ccache,enable-time-trace,enable-asan,enable-msan,enable-tsan,enable-ubsan,build-type:,enable-profiler,enable-light-metal-trace,install-prefix:,build-tests,build-ttnn-tests,build-metal-tests,build-umd-tests,build-programming-examples,build-tt-train,build-static-libs,disable-unity-builds,release,development,debug,clean,cxx-compiler-path:,c-compiler-path:,ttnn-shared-sub-libs
 
 # Parse the options
 PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTIONS --name "$0" -- "$@")
@@ -99,6 +101,8 @@ while true; do
             build_type="$2";shift;;
         -p|--enable-profiler)
             enable_profiler="ON";;
+        --enable-light-metal-trace)
+            enable_light_metal_trace="ON";;
         --install-prefix)
             install_prefix="$2";shift;;
         --build-tests)
@@ -182,6 +186,7 @@ echo "INFO: Install Prefix: $cmake_install_prefix"
 echo "INFO: Build tests: $build_tests"
 echo "INFO: Enable Unity builds: $unity_builds"
 echo "INFO: TTNN Shared sub libs : $ttnn_shared_sub_libs"
+echo "INFO: Enable Light Metal Trace: $enable_light_metal_trace"
 
 # Prepare cmake arguments
 cmake_args+=("-B" "$build_dir")
@@ -271,6 +276,10 @@ if [ "$unity_builds" = "ON" ]; then
     cmake_args+=("-DTT_UNITY_BUILDS=ON")
 else
     cmake_args+=("-DTT_UNITY_BUILDS=OFF")
+fi
+
+if [ "$enable_light_metal_trace" = "ON" ]; then
+    cmake_args+=("-DTT_ENABLE_LIGHT_METAL_TRACE=ON")
 fi
 
 if [ "$build_all" = "ON" ]; then
