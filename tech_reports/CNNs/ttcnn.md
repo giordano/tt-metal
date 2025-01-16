@@ -562,11 +562,12 @@ off with an example. We start with the following tensors:
 
 For simplicity, let the batch size, stride and dilation be one. Let's visualize the activation tensor.
 
-
+<div>
 <img src="media/halo2.png" style="height:350px;">
 <img src="media/halo3.png" style="height:350px;">
 <img src="media/halo4.png" style="height:350px;">
 <img src="media/halo5.png" style="height:350px;">
+</div>
 
 _Figure 10: Input tensor (A, B, C, D)_
 
