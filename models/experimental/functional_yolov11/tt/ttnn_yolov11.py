@@ -155,6 +155,7 @@ class Bottleneck:
         input = x
         x = self.cv1(device, x)
         x = self.cv2(device, x)
+        print("their dtypes", x.dtype, input.dtype)
         return input + x
 
 
@@ -258,7 +259,7 @@ class C3k2:
             y1 = ttnn.from_torch(y1, dtype=ttnn.bfloat16, device=device)
 
             y2 = ttnn.from_torch(y2, dtype=ttnn.bfloat16, device=device, layout=ttnn.TILE_LAYOUT)
-
+            print("input shape for bottlneck block", y2.shape)
             y3 = self.k(device, y2)
 
             y2 = ttnn.to_layout(y2, ttnn.ROW_MAJOR_LAYOUT)
@@ -277,7 +278,7 @@ class C3k2:
 
             y1, y2 = ttnn.split(x, 2, 3)
             y3 = self.c3k(device, y2)
-
+            print("output shape after c3k", y3.shape)
             if y1.is_sharded():
                 y1 = ttnn.sharded_to_interleaved(y1, ttnn.L1_MEMORY_CONFIG)
             if y2.is_sharded():
